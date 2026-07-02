@@ -1,0 +1,112 @@
+# SPDX-FileCopyrightText: 2026 Jonas Kaninda
+# SPDX-License-Identifier: Apache-2.0
+name: 'Deploy to Miabi'
+description: 'Deploy an application to a Miabi control panel from CI using the miabi CLI.'
+author: 'miabi-io'
+branding:
+  icon: 'upload-cloud'
+  color: 'purple'
+
+inputs:
+  app:
+    description: 'Application to deploy (its name/handle). Omit to deploy the app a workspace-bound token points at.'
+    required: false
+    default: ''
+  tag:
+    description: 'Image tag to deploy (the CI flow deploys the image built for this commit).'
+    required: false
+    default: ${{ github.sha }}
+  url:
+    description: 'Miabi panel URL, e.g. https://miabi.example.com. Falls back to the MIABI_URL environment variable.'
+    required: false
+    default: ''
+  token:
+    description: 'Miabi API token (use a repository/organization secret). Falls back to the MIABI_TOKEN environment variable.'
+    required: false
+    default: ''
+  workspace:
+    description: 'Workspace name or id to target. Only needed when the token is not bound to a single workspace.'
+    required: false
+    default: ''
+  wait:
+    description: 'Wait for the deployment to finish and fail the job if it fails.'
+    required: false
+    default: 'true'
+  timeout:
+    description: 'Maximum time to wait when "wait" is true (Go duration, e.g. 10m, 300s).'
+    required: false
+    default: '10m'
+  version:
+    description: 'miabi CLI version to install (e.g. 1.4.0 or v1.4.0), or "latest".'
+    required: false
+    default: 'latest'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install the miabi CLI
+      shell: bash
+      env:
+        VERSION_IN: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        repo="miabi-io/miabi-cli"
+        ver="${VERSION_IN:-latest}"
+
+        if [ "$ver" = "latest" ]; then
+          # Resolve the newest release tag via the releases/latest redirect —
+          # avoids the GitHub API's unauthenticated rate limit.
+          tag="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/${repo}/releases/latest" | sed 's#.*/tag/##')"
+          if [ -z "$tag" ]; then echo "::error::could not resolve the latest miabi CLI release"; exit 1; fi
+        else
+          case "$ver" in v*) tag="$ver" ;; *) tag="v$ver" ;; esac
+        fi
+        num="${tag#v}"
+
+        os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+        case "$os" in
+          linux|darwin) ;;
+          *) echo "::error::unsupported runner OS '$os' — this action supports Linux and macOS runners"; exit 1 ;;
+        esac
+        case "$(uname -m)" in
+          x86_64|amd64) arch=amd64 ;;
+          aarch64|arm64) arch=arm64 ;;
+          *) echo "::error::unsupported runner architecture '$(uname -m)'"; exit 1 ;;
+        esac
+
+        url="https://github.com/${repo}/releases/download/${tag}/miabi_${num}_${os}_${arch}.tar.gz"
+        dir="${RUNNER_TEMP:-/tmp}/miabi-cli"
+        mkdir -p "$dir"
+        echo "Installing miabi ${tag} (${os}/${arch})"
+        curl -fsSL "$url" | tar -xzf - -C "$dir" miabi
+        chmod +x "$dir/miabi"
+        echo "$dir" >> "$GITHUB_PATH"
+
+    - name: Deploy
+      shell: bash
+      env:
+        MIABI_URL_IN: ${{ inputs.url }}
+        MIABI_TOKEN_IN: ${{ inputs.token }}
+        APP: ${{ inputs.app }}
+        TAG: ${{ inputs.tag }}
+        WORKSPACE: ${{ inputs.workspace }}
+        WAIT: ${{ inputs.wait }}
+        TIMEOUT: ${{ inputs.timeout }}
+      run: |
+        set -euo pipefail
+
+        # Prefer explicit inputs; otherwise fall back to the ambient MIABI_URL /
+        # MIABI_TOKEN the workflow may already export.
+        if [ -n "${MIABI_URL_IN:-}" ]; then export MIABI_URL="$MIABI_URL_IN"; fi
+        if [ -n "${MIABI_TOKEN_IN:-}" ]; then export MIABI_TOKEN="$MIABI_TOKEN_IN"; fi
+        if [ -z "${MIABI_URL:-}" ]; then echo "::error::Miabi URL not set — pass the 'url' input or set the MIABI_URL env var"; exit 1; fi
+        if [ -z "${MIABI_TOKEN:-}" ]; then echo "::error::Miabi token not set — pass the 'token' input or set the MIABI_TOKEN env var"; exit 1; fi
+
+        args=(apps deploy)
+        if [ -n "${APP:-}" ]; then args+=("$APP"); fi
+        if [ -n "${TAG:-}" ]; then args+=(--tag "$TAG"); fi
+        if [ -n "${WORKSPACE:-}" ]; then args+=(--workspace "$WORKSPACE"); fi
+        if [ "${WAIT:-true}" = "true" ]; then args+=(--wait --timeout "${TIMEOUT:-10m}"); fi
+
+        echo "+ miabi ${args[*]}"
+        miabi "${args[@]}"

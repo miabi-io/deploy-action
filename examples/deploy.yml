@@ -1,0 +1,48 @@
+# Example: build a container image, push it, and deploy it to Miabi.
+# Copy this into .github/workflows/deploy.yml in your project repository.
+#
+# Prerequisites:
+#   - Repository variable  MIABI_URL   = your Miabi panel URL (https://miabi.example.com)
+#   - Repository secret     MIABI_TOKEN = a workspace-bound API token with deploy permission
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+      - name: Deploy to Miabi
+        uses: miabi-io/deploy-action@v1
+        with:
+          app: web
+          tag: ${{ github.sha }}
+          url: ${{ vars.MIABI_URL }}
+          token: ${{ secrets.MIABI_TOKEN }}
+          wait: 'true'
+          timeout: 15m
