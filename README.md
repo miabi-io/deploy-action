@@ -47,6 +47,7 @@ jobs:
 |-------|----------|---------|-------------|
 | `app` | no | — | Application to deploy (its name/handle). Omit to deploy the app a workspace-bound token points at. |
 | `tag` | no | `${{ github.sha }}` | Image tag to deploy. |
+| `strategy` | no | — | Deploy strategy: `recreate` \| `rolling` \| `canary`. Omit to use the app's configured default. |
 | `url` | no | — | Panel URL. Falls back to the `MIABI_URL` env var. |
 | `token` | no | — | API token. Falls back to the `MIABI_TOKEN` env var. |
 | `workspace` | no | — | Workspace name or id. Only needed when the token is not bound to one workspace. |

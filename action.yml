@@ -16,6 +16,10 @@ inputs:
     description: 'Image tag to deploy (the CI flow deploys the image built for this commit).'
     required: false
     default: ${{ github.sha }}
+  strategy:
+    description: 'Deploy strategy: recreate | rolling | canary. Omit to use the app''s configured default.'
+    required: false
+    default: ''
   url:
     description: 'Miabi panel URL, e.g. https://miabi.example.com. Falls back to the MIABI_URL environment variable.'
     required: false
@@ -89,6 +93,7 @@ runs:
         MIABI_TOKEN_IN: ${{ inputs.token }}
         APP: ${{ inputs.app }}
         TAG: ${{ inputs.tag }}
+        STRATEGY: ${{ inputs.strategy }}
         WORKSPACE: ${{ inputs.workspace }}
         WAIT: ${{ inputs.wait }}
         TIMEOUT: ${{ inputs.timeout }}
@@ -105,6 +110,7 @@ runs:
         args=(apps deploy)
         if [ -n "${APP:-}" ]; then args+=("$APP"); fi
         if [ -n "${TAG:-}" ]; then args+=(--tag "$TAG"); fi
+        if [ -n "${STRATEGY:-}" ]; then args+=(--strategy "$STRATEGY"); fi
         if [ -n "${WORKSPACE:-}" ]; then args+=(--workspace "$WORKSPACE"); fi
         if [ "${WAIT:-true}" = "true" ]; then args+=(--wait --timeout "${TIMEOUT:-10m}"); fi
 
