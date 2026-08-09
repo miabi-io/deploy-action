@@ -17,7 +17,7 @@ wait for the rollout to finish (the job fails if the deploy fails).
 1. Create a **workspace-bound API token** in your Miabi panel (Settings → API
    tokens) with deploy permission for the app.
 2. Add two secrets/vars to your repository:
-   - `MIABI_URL` (repository **variable**) — your panel URL, e.g. `https://miabi.example.com`
+   - `MIABI_SERVER` (repository **variable**) — your Miabi server URL, e.g. `https://miabi.example.com`
    - `MIABI_TOKEN` (repository **secret**) — the API token
 3. Add the action to a workflow:
 
@@ -37,7 +37,7 @@ jobs:
         with:
           app: web
           tag: ${{ github.sha }}
-          url: ${{ vars.MIABI_URL }}
+          server: ${{ vars.MIABI_SERVER }}
           token: ${{ secrets.MIABI_TOKEN }}
 ```
 
@@ -48,23 +48,39 @@ jobs:
 | `app` | no | — | Application to deploy (its name/handle). Omit to deploy the app a workspace-bound token points at. |
 | `tag` | no | `${{ github.sha }}` | Image tag to deploy. |
 | `strategy` | no | — | Deploy strategy: `recreate` \| `rolling` \| `canary`. Omit to use the app's configured default. |
-| `url` | no | — | Panel URL. Falls back to the `MIABI_URL` env var. |
+| `server` | no | — | Miabi server URL. Falls back to the `MIABI_SERVER` env var. |
+| `url` | no | — | **Deprecated** — use `server`. Still honored, with a warning. |
 | `token` | no | — | API token. Falls back to the `MIABI_TOKEN` env var. |
 | `workspace` | no | — | Workspace name or id. Only needed when the token is not bound to one workspace. |
 | `wait` | no | `true` | Wait for the deployment and fail the job if it fails. |
 | `timeout` | no | `10m` | Max wait when `wait` is true (Go duration, e.g. `10m`, `300s`). |
 | `version` | no | `latest` | miabi CLI version to install (e.g. `1.4.0`) or `latest`. |
 
-`url`/`token` can also be provided via the `MIABI_URL` / `MIABI_TOKEN`
+### Migrating from `url`
+
+The `url` input and the `MIABI_URL` environment variable are deprecated in
+favour of `server` / `MIABI_SERVER`, matching the `miabi` CLI's `--server` flag.
+Both still work and resolve in this order — `server` input, `url` input,
+`MIABI_SERVER`, `MIABI_URL` — but the deprecated ones log a warning:
+
+```diff
+       - uses: miabi-io/deploy-action@v1
+         with:
+-          url: ${{ vars.MIABI_URL }}
++          server: ${{ vars.MIABI_SERVER }}
+           token: ${{ secrets.MIABI_TOKEN }}
+```
+
+`server`/`token` can also be provided via the `MIABI_SERVER` / `MIABI_TOKEN`
 environment variables (job- or step-level `env:`), which is handy when several
-steps share them:
+steps share them — these are the same variables the `miabi` CLI reads:
 
 ```yaml
 jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      MIABI_URL: ${{ vars.MIABI_URL }}
+      MIABI_SERVER: ${{ vars.MIABI_SERVER }}
       MIABI_TOKEN: ${{ secrets.MIABI_TOKEN }}
     steps:
       - uses: miabi-io/deploy-action@v1
@@ -102,7 +118,7 @@ jobs:
         with:
           app: web
           tag: ${{ github.sha }}
-          url: ${{ vars.MIABI_URL }}
+          server: ${{ vars.MIABI_SERVER }}
           token: ${{ secrets.MIABI_TOKEN }}
           timeout: 15m
 ```
@@ -114,7 +130,7 @@ jobs:
         with:
           app: web
           wait: 'false'
-          url: ${{ vars.MIABI_URL }}
+          server: ${{ vars.MIABI_SERVER }}
           token: ${{ secrets.MIABI_TOKEN }}
 ```
 
@@ -133,7 +149,7 @@ jobs:
         with:
           app: web
           tag: ${{ github.event.release.tag_name }}
-          url: ${{ vars.MIABI_URL }}
+          server: ${{ vars.MIABI_SERVER }}
           token: ${{ secrets.MIABI_TOKEN }}
 ```
 
