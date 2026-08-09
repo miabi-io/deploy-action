@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="assets/miabi-icon.svg" alt="Miabi" width="96" height="96">
+  <img src="assets/miabi-deploy-header.png" alt="Deploy to Miabi — GitHub Action" width="100%">
 </p>
-
-<h1 align="center">Deploy to Miabi — GitHub Action</h1>
 
 Deploy an application to a [Miabi](https://github.com/miabi-io/miabi) control
 panel from GitHub Actions. It installs the [`miabi`
