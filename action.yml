@@ -3,8 +3,9 @@
 name: 'Deploy to Miabi'
 description: 'Deploy an application to a Miabi control panel from CI using the miabi CLI.'
 author: 'miabi-io'
+
 branding:
-  icon: 'upload-cloud'
+  icon: 'arrow-up-circle'
   color: 'purple'
 
 inputs:
