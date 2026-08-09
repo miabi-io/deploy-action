@@ -20,10 +20,15 @@ inputs:
     description: 'Deploy strategy: recreate | rolling | canary. Omit to use the app''s configured default.'
     required: false
     default: ''
-  url:
-    description: 'Miabi panel URL, e.g. https://miabi.example.com. Falls back to the MIABI_URL environment variable.'
+  server:
+    description: 'Miabi server URL, e.g. https://miabi.example.com. Falls back to the MIABI_SERVER environment variable.'
     required: false
     default: ''
+  url:
+    description: 'Deprecated: use "server". Kept working for existing workflows.'
+    required: false
+    default: ''
+    deprecationMessage: 'The "url" input is deprecated — use "server" (or the MIABI_SERVER environment variable) to match the miabi CLI.'
   token:
     description: 'Miabi API token (use a repository/organization secret). Falls back to the MIABI_TOKEN environment variable.'
     required: false
@@ -89,6 +94,7 @@ runs:
     - name: Deploy
       shell: bash
       env:
+        MIABI_SERVER_IN: ${{ inputs.server }}
         MIABI_URL_IN: ${{ inputs.url }}
         MIABI_TOKEN_IN: ${{ inputs.token }}
         APP: ${{ inputs.app }}
@@ -100,11 +106,20 @@ runs:
       run: |
         set -euo pipefail
 
-        # Prefer explicit inputs; otherwise fall back to the ambient MIABI_URL /
-        # MIABI_TOKEN the workflow may already export.
-        if [ -n "${MIABI_URL_IN:-}" ]; then export MIABI_URL="$MIABI_URL_IN"; fi
+        # Server precedence mirrors the CLI: the `server` input, then the
+        # deprecated `url` input, then MIABI_SERVER, then the legacy MIABI_URL a
+        # workflow may already export. Whatever wins is exported as MIABI_SERVER.
+        if [ -n "${MIABI_SERVER_IN:-}" ]; then
+          export MIABI_SERVER="$MIABI_SERVER_IN"
+        elif [ -n "${MIABI_URL_IN:-}" ]; then
+          echo "::warning::The 'url' input is deprecated — rename it to 'server'."
+          export MIABI_SERVER="$MIABI_URL_IN"
+        elif [ -z "${MIABI_SERVER:-}" ] && [ -n "${MIABI_URL:-}" ]; then
+          echo "::warning::MIABI_URL is deprecated — rename it to MIABI_SERVER."
+          export MIABI_SERVER="$MIABI_URL"
+        fi
         if [ -n "${MIABI_TOKEN_IN:-}" ]; then export MIABI_TOKEN="$MIABI_TOKEN_IN"; fi
-        if [ -z "${MIABI_URL:-}" ]; then echo "::error::Miabi URL not set — pass the 'url' input or set the MIABI_URL env var"; exit 1; fi
+        if [ -z "${MIABI_SERVER:-}" ]; then echo "::error::Miabi server not set — pass the 'server' input or set the MIABI_SERVER env var"; exit 1; fi
         if [ -z "${MIABI_TOKEN:-}" ]; then echo "::error::Miabi token not set — pass the 'token' input or set the MIABI_TOKEN env var"; exit 1; fi
 
         args=(apps deploy)

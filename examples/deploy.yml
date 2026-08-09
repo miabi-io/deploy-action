@@ -2,7 +2,7 @@
 # Copy this into .github/workflows/deploy.yml in your project repository.
 #
 # Prerequisites:
-#   - Repository variable  MIABI_URL   = your Miabi panel URL (https://miabi.example.com)
+#   - Repository variable  MIABI_SERVER = your Miabi server URL (https://miabi.example.com)
 #   - Repository secret     MIABI_TOKEN = a workspace-bound API token with deploy permission
 name: Deploy
 
@@ -42,7 +42,7 @@ jobs:
         with:
           app: web
           tag: ${{ github.sha }}
-          url: ${{ vars.MIABI_URL }}
+          server: ${{ vars.MIABI_SERVER }}
           token: ${{ secrets.MIABI_TOKEN }}
           wait: 'true'
           timeout: 15m
