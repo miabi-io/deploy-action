@@ -60,7 +60,7 @@ runs:
         VERSION_IN: ${{ inputs.version }}
       run: |
         set -euo pipefail
-        repo="miabi-io/miabi-cli"
+        repo="miabi-io/cli"
         ver="${VERSION_IN:-latest}"
 
         if [ "$ver" = "latest" ]; then

@@ -4,7 +4,7 @@
 
 Deploy an application to a [Miabi](https://github.com/miabi-io/miabi) control
 panel from GitHub Actions. It installs the [`miabi`
-CLI](https://github.com/miabi-io/miabi-cli) and runs `miabi apps deploy` against
+CLI](https://github.com/miabi-io/cli) and runs `miabi apps deploy` against
 your panel's public `/api/v1` API — no SSH, no Docker socket, no server access.
 
 The typical flow: build and push your image, then point Miabi at the new tag and
@@ -160,7 +160,7 @@ A ready-to-copy workflow lives in [`examples/deploy.yml`](examples/deploy.yml).
 - **Security:** always pass the token via `secrets`, never inline. The CLI never
   logs the token; this action passes it to the CLI via the environment only.
 - **What it runs:** effectively `miabi apps deploy <app> --tag <tag> --wait`. See
-  the [CLI docs](https://github.com/miabi-io/miabi-cli) for the full command set
+  the [CLI docs](https://github.com/miabi-io/cli) for the full command set
   (`apply`, `rollback`, `env`, …) if you need more than a deploy.
 
 ## License
